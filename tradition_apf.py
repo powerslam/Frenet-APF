@@ -12,9 +12,9 @@ MAP = np.ones((MAP_WIDTH, MAP_HEIGHT, 3), dtype=np.uint8) * 255
 
 ############## obstacle setting ##############
 obstacles = [
-    StaticObstacle(L=100.0, W=30.0, position=Position(x=150, y=30)),
-    StaticObstacle(L=50.0, W=40.0, position=Position(x=275, y=-30)),
-    StaticObstacle(L=70.0, W=60.0, position=Position(x=400, y=20)),
+    StaticObstacle(L=100.0, W=30.0, position=Position(x=150, y=30), orientation=EulerAngle(yaw=90).to_quaternion()),
+    StaticObstacle(L=50.0, W=40.0, position=Position(x=275, y=-30), orientation=EulerAngle(yaw=-30).to_quaternion()),
+    StaticObstacle(L=70.0, W=60.0, position=Position(x=400, y=20), orientation=EulerAngle(yaw=20).to_quaternion()),
 ]
 
 for obstacle in obstacles:
@@ -43,8 +43,6 @@ while ego.position.distance_from(goal) > tolerance:
         F_rep += obstacle.repulsive_force(ego)
         print('F_rep', F_rep.x, F_rep.y, F_rep.z)
 
-    # break
-
     F = F_att * (1 / F_att.norm()) + F_rep * (1 / F_att.norm())
     F = F * (1 / F.norm())
     print('F    ', F.x, F.y, F.z)
@@ -55,9 +53,8 @@ while ego.position.distance_from(goal) > tolerance:
     ego.draw(MAP, color=(255, 0, 0))
 
     cv2.imshow("hmm", MAP)
-    cv2.waitKey(33)
-    # if cv2.waitKey(0) == ord('q'):
-        # break
+    if cv2.waitKey(33) == ord('q'):
+        break
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
