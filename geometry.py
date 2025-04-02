@@ -62,7 +62,12 @@ class Position(Vector3d):
         return np.hypot(self.x - other.x, self.y - other.y)
 
 class EulerAngle(Vector3d):
-    def __init__(self, roll = 0., pitch = 0., yaw = 0.):        
+    def __init__(self, roll = 0., pitch = 0., yaw = 0., is_degree=True):        
+        if is_degree:
+            roll = self.deg2rad(roll)
+            pitch = self.deg2rad(pitch)
+            yaw = self.deg2rad(yaw)
+        
         super().__init__(roll, pitch, -yaw)
 
     @property
@@ -88,6 +93,9 @@ class EulerAngle(Vector3d):
     @yaw.setter
     def yaw(self, value):
         self.z = value
+
+    def deg2rad(self, angle: float) -> float:
+        return angle * np.pi / 180.0
 
     def from_rotation_matrix(self, matrix):
         r = R.from_matrix(matrix)
