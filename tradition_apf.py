@@ -32,6 +32,7 @@ goal.draw_goal(MAP)
 
 ############## vehicle setting ##############
 ego = Vehicle(L=15.0, W=15.0, position=Position(x=20, y=0))
+############## vehicle setting ##############
 
 tolerance = 1.0
 
@@ -42,7 +43,7 @@ while ego.position.distance_from(goal) > tolerance:
     F_rep = Vector3d()
 
     for obstacle in obstacles:
-        F_rep += obstacle.repulsive_force(ego)
+        F_rep += obstacle.repulsive_force(ego, goal, 0.5)
         print('F_rep', F_rep.x, F_rep.y, F_rep.z)
 
     F = Vector3d()
