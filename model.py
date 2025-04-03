@@ -116,18 +116,44 @@ class Obstacle(Model):
         self.rep_threshold = rep_threshold
         self.rep_gain = rep_gain
 
+    # 회전 축을 설정해야 하는데,,
     def repulsive_force(self, ego: Vehicle) -> Vector3d:
-        dist = self.position.distance_from(ego.position)
-        if dist < self.rep_threshold:
+        rotated_ego_position = ego.position - self.position
+        rotated_ego_position.z = 1.
+
+        rotation_matrix = self.orientation.to_rotation_matrix()
+        rotation_matrix[0, 1] *= -1
+        rotation_matrix[1, 0] *= -1
+
+        rotated_ego_position = rotation_matrix @ rotated_ego_position.to_array().T
+        pure_dist = self.position.distance_from(
+            Position(rotated_ego_position[0], rotated_ego_position[1], 0.0)
+        )
+
+        obstacle_position = self.position.to_array().T
+        rotated_ego_position -= obstacle_position
+
+        eillpse_gain = 0.8
+        rotated_ego_position **= 2
+
+        v_r = 1
+        braking_time = 1
+        rotated_ego_position[0] /= (eillpse_gain * self.L + v_r * braking_time) ** 2
+        rotated_ego_position[1] /= (eillpse_gain * self.W) ** 2
+
+        dist = factor * np.sqrt(rotated_ego_position[0] + rotated_ego_position[1])
+        
+        print('pure_dist', pure_dist)
+        if dist <= 1.0 and pure_dist < self.rep_threshold:
             ret = ego.position - self.position
-            ret *= factor * self.rep_gain * (1 / dist - 1 / self.rep_threshold)
+            ret *= self.rep_gain * (1 / dist - 1 / self.rep_threshold)
             return ret
         
         return Vector3d()
 
 class StaticObstacle(Obstacle):
     def __init__(self, L: float, W: float, position: Position = None, orientation: Quaternion = None):
-        super().__init__(L, W, rep_threshold=115, rep_gain=500.0, position=position, orientation=orientation)
+        super().__init__(L, W, rep_threshold=200, rep_gain=3.0, position=position, orientation=orientation)
 
 class DynamicObstalce(Obstacle):
     def __init__(self, L: float, W: float, position: Position = None, orientation: Quaternion = None):
