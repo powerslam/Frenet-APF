@@ -2,9 +2,6 @@ import cv2
 from geometry import *
 from enum import Enum
 
-alpha = 0.5 # 픽셀당 거리
-factor = alpha * alpha
-
 class Direction(Enum):
     UP         = 1
     DOWN       = 2
@@ -116,8 +113,9 @@ class Obstacle(Model):
         self.rep_threshold = rep_threshold
         self.rep_gain = rep_gain
 
-    # 회전 축을 설정해야 하는데,,
-    def repulsive_force(self, ego: Vehicle) -> Vector3d:
+    def distance_from(self, ego: Vehicle) -> float:
+        dist = self.position.distance_from(ego.position)
+        
         rotated_ego_position = ego.position - self.position
         rotated_ego_position.z = 1.
 
@@ -126,29 +124,28 @@ class Obstacle(Model):
         rotation_matrix[1, 0] *= -1
 
         rotated_ego_position = rotation_matrix @ rotated_ego_position.to_array().T
-        pure_dist = self.position.distance_from(
-            Position(rotated_ego_position[0], rotated_ego_position[1], 0.0)
-        )
-
-        obstacle_position = self.position.to_array().T
-        rotated_ego_position -= obstacle_position
-
-        eillpse_gain = 0.8
+        # rotated_ego_position -= self.position.to_array().T
         rotated_ego_position **= 2
 
-        v_r = 1
-        braking_time = 1
-        rotated_ego_position[0] /= (eillpse_gain * self.L + v_r * braking_time) ** 2
-        rotated_ego_position[1] /= (eillpse_gain * self.W) ** 2
+        ellipse_gain, v_r, braking_time = 4, 1, 1
+        rotated_ego_position[0] /= (ellipse_gain * self.L / 2 + v_r * braking_time) ** 2
+        rotated_ego_position[1] /= (ellipse_gain * self.W / 2) ** 2
 
-        dist = factor * np.sqrt(rotated_ego_position[0] + rotated_ego_position[1])
-        
-        print('pure_dist', pure_dist)
-        if dist <= 1.0 and pure_dist < self.rep_threshold:
-            ret = ego.position - self.position
-            ret *= self.rep_gain * (1 / dist - 1 / self.rep_threshold)
-            return ret
-        
+        rotated_dist = np.sqrt(rotated_ego_position[0] + rotated_ego_position[1])
+
+        return dist, rotated_dist
+
+    def repulsive_force(self, ego: Vehicle, goal: "Goal", regulatory_factor) -> Vector3d:
+        dist, rotated_dist = self.distance_from(ego)
+        print(dist, rotated_dist)
+
+        ego_goal_dist = ego.position.distance_from(goal)
+        factor1 = self.rep_gain * (1 / rotated_dist - 1 / self.rep_threshold) * np.pow(ego_goal_dist, regulatory_factor) / np.pow(rotated_dist, 3)
+        factor2 = self.rep_gain * (regulatory_factor / 2) * np.pow((1 / rotated_dist - 1 / self.rep_threshold), 2) * np.pow(ego_goal_dist, regulatory_factor - 2)
+
+        if rotated_dist <= 1.0 and dist < self.rep_threshold:
+            return factor1 * (ego.position - self.position) + factor2 * (ego.position - goal)
+            
         return Vector3d()
 
 class StaticObstacle(Obstacle):
@@ -169,7 +166,7 @@ class Goal(Position):
         self.att_gain = att_gain
     
     def attractive_force(self, ego: Vehicle) -> Vector3d:
-        return -factor * self.att_gain * (ego.position - self)
+        return -self.att_gain * (ego.position - self)
 
     def draw_goal(self, img: np.ndarray):
         map_half_height = img.shape[0] // 2
