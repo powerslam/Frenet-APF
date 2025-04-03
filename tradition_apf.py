@@ -19,6 +19,8 @@ obstacles = [
 
 for obstacle in obstacles:
     obstacle.draw(MAP)
+
+# exit()
 ############## obstacle setting ##############
 
 ############## goal setting ##############
@@ -36,14 +38,20 @@ tolerance = 1.0
 while ego.position.distance_from(goal) > tolerance:
     ego.draw(MAP, color=(255, 0, 0))
     F_att = goal.attractive_force(ego)
-    print('F_att', F_att.x, F_att.y, F_att.z)
+    print('F_att', F_att.x, F_att.y, F_att.z)           
     F_rep = Vector3d()
 
     for obstacle in obstacles:
         F_rep += obstacle.repulsive_force(ego)
         print('F_rep', F_rep.x, F_rep.y, F_rep.z)
 
-    F = F_att * (1 / F_att.norm()) + F_rep * (1 / F_att.norm())
+    F = Vector3d()
+    if F_att.norm() != 0:
+        F += F_att * (1 / F_att.norm())
+
+    if F_rep.norm() != 0:
+        F += F_rep * (1 / F_rep.norm())
+
     F = F * (1 / F.norm())
     print('F    ', F.x, F.y, F.z)
 
